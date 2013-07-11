@@ -46,8 +46,29 @@ class smsautomate {
 		$message = Event::$data->message;
 		$from = Event::$data->message_from;
 		$reporterId = Event::$data->reporter_id;
-		$message_date = Event::$data->message_date;
+                $message_date = Event::$data->message_date;
 
+                // We store a reference of the Event for updating it later
+                $sms_event = &Event::$data;
+
+                $form = array(
+			'incident_title' => '',
+			'incident_description' => '',
+			'incident_date' => '',
+			'incident_hour' => '',
+			'incident_minute' => '',
+			'incident_ampm' => '',
+			'latitude' => '',
+			'longitude' => '',
+			'location_name' => '',
+			'incident_category' => array(),
+			'person_first' => '',
+			'person_last' => '',
+			'person_email' => '',
+			'form_id'	  => '',
+                        'custom_field' => array(),
+                        'service_id' => 1  // Mode : sms
+                );
 
 		//check to see if we're using the white list, and if so, if our SMSer is whitelisted
 		$num_whitelist = ORM::factory('smsautomate_whitelist')
@@ -89,63 +110,18 @@ class smsautomate {
 		{
 			return;
 		}
-		
+
 		//start parsing
 		//latitude
-		$lat = strtoupper(trim($message_elements[1]));
-		//check if there's a N or S in here and deal with it
-		$n_pos = stripos($lat, "N");
-		if(!($n_pos === false))
-		{
-			$lat = str_replace("N", "", $lat);
-		}
-		
-		$s_pos = stripos($lat, "S");
-		if(!($s_pos===false))
-		{
-			$lat = str_replace("S", "", $lat);
-			$lat = "-".$lat; //make negative
-		}
-		if(is_numeric($lat))
-		{
-			$lat = floatval($lat);
-		}
-		else
-		{
-			return; //not valid
-		}
-		
+		$post['latitude'] = strtoupper(trim($message_elements[1]));
+				
 		//longitude
-		$lon = strtoupper(trim($message_elements[2]));
-		//check if there's a W or E in here and deal with it
-		$e_pos = stripos($lon, "E");
-		if(!($e_pos===false))
-		{
-			$lon = str_replace("E", "", $lon);
-		}
-		
-		$w_pos = stripos($lon, "W");
-		if(!($w_pos===false))
-		{
-			$lon = str_replace("W", "", $lon);
-			$lon = "-".$lon; //make negative
-		}
-		if(is_numeric($lon))
-		{
-			$lon = floatval($lon);
-		}
-		else
-		{
-			return; //not valid
-		}
+		$post['longitude'] = strtoupper(trim($message_elements[2]));
 		
 		//title
-		$title = trim($message_elements[3]);
-		if($title == "")
-		{
-			return; //need a valid title
-		}
-		
+		$post['incident_title'] = trim($message_elements[3]);
+			
+                //location
 		$location_description = "";
 		//check and see if we have a textual location
 		if($elements_count >= 5)
@@ -156,23 +132,32 @@ class smsautomate {
 		{
 			$location_description = "Sent Via SMS";
 		}
+                $post['location_name'] = $location_description;
 		
 		$description = "";
 		//check and see if we have a description
 		if($elements_count >= 6)
 		{
-			$description =$description.trim($message_elements[5]);
+			$description = $description.trim($message_elements[5]);
 		}
-		$description = $description."\n\r\n\rThis reported was created automatically via SMS.";
+
+                // TODO NOTE : Make the appended text optionable and configurable
+                $post['incident_description'] = $description."\n\r\n\rThis reported was created automatically via SMS.";
 		
-		$categories = array();
 		//check and see if we have categories
 		if($elements_count >=7)
 		{
-			$categories = explode(",", $message_elements[6]);
+			$post['incident_category'] = explode(",", $message_elements[6]);
 		}
 		
-		
+                //Date
+                $date = DateTime::createFromFormat('Y-m-d H:i:s', $message_date);
+
+		$post['incident_date'] = $date->format('m/d/Y'); // mm/dd/yyyy
+		$post['incident_hour'] = $date->format('h');
+		$post['incident_minute'] = $date->format('i');
+		$post['incident_ampm'] = $date->format('a');
+
 		//for testing:
 		/*
 		echo "lat: ". $lat."<br/>";
@@ -182,69 +167,60 @@ class smsautomate {
 		echo "category: ". Kohana::debug($categories)."<br/>";
 		*/
 		
-		// STEP 1: SAVE LOCATION
-		$location = new Location_Model();
-		$location->location_name = $location_description;
-		$location->latitude = $lat;
-		$location->longitude = $lon;
-		$location->location_date = $message_date;
-		$location->save();
-		//STEP 2: Save the incident
-		$incident = new Incident_Model();
-		$incident->location_id = $location->id;
-		$incident->user_id = 0;
-		$incident->incident_title = $title;
-		$incident->incident_description = $description;
-		$incident->incident_date = $message_date;
-		$incident->incident_dateadd = $message_date;
-		$incident->incident_mode = 2;
-		// Incident Evaluation Info
-		$incident->incident_active = 1;
-		$incident->incident_verified = 1;
-		//Save
-		$incident->save();
 		
-		//STEP 3: Record Approval
-		$verify = new Verify_Model();
-		$verify->incident_id = $incident->id;
-		$verify->user_id = 0;
-		$verify->verified_date = date("Y-m-d H:i:s",time());
-		if ($incident->incident_active == 1)
-		{
-			$verify->verified_status = '1';
-		}
-		elseif ($incident->incident_verified == 1)
-		{
-			$verify->verified_status = '2';
-		}
-		elseif ($incident->incident_active == 1 && $incident->incident_verified == 1)
-		{
-			$verify->verified_status = '3';
-		}
-		else
-		{
-			$verify->verified_status = '0';
-		}
-		$verify->save();
-		
-		
-		// STEP 3: SAVE CATEGORIES
-		ORM::factory('Incident_Category')->where('incident_id',$incident->id)->delete_all();		// Delete Previous Entries
-		foreach($categories as $item)
-		{
-			if(is_numeric($item))
-			{
-				$incident_category = new Incident_Category_Model();
-				$incident_category->incident_id = $incident->id;
-				$incident_category->category_id = $item;
-				$incident_category->save();
-			}
+                // We re-use the same process as Reports_Controller->submit()
+		if (reports::validate($post))
+                {
+                    // STEP 1: SAVE LOCATION
+                    $location = new Location_Model();
+                    reports::save_location($post, $location);
+
+                    // STEP 2: SAVE INCIDENT
+                    $incident = new Incident_Model();
+                    reports::save_report($post, $incident, $location->id);
+
+                    // STEP 2b: SAVE INCIDENT GEOMETRIES
+                    // We don't have any geometries here
+                    // reports::save_report_geometry($post, $incident);
+
+                    // STEP 3: SAVE CATEGORIES
+                    reports::save_category($post, $incident);
+
+                    // STEP 4: SAVE MEDIA
+                    // We don't have any media here
+                    // reports::save_media($post, $incident);
+
+                    // STEP 5: SAVE CUSTOM FORM FIELDS
+                    reports::save_custom_fields($post, $incident);
+
+                    // STEP 6: SAVE PERSONAL INFORMATION
+                    reports::save_personal_info($post, $incident);
+
+                    // Don't forget to update the message with Incident Id
+                    $sms_event->incident_id = $incident->id;
+                    $sms_event->save();
+                    
+                    // Run events
+                    Event::run('ushahidi_action.report_submit', $post);
+                    Event::run('ushahidi_action.report_add', $incident);
+
+		} else {
+			echo "ERROR";
+		//	echo Kohana::debug($post);
+                        print_r($post->errors('report'));
+
+                        // Save the error trace inside the message
+                        $sms_event->message = 'VALIDATION ERROR' . "\n" . $sms_event->message;
+
+                        $errors = "\n\n" . 'ERROR TRACE :' . "\n" . print_r($post->errors('report'), TRUE);
+                        $sms_event->message .= $errors;
+
+                        $sms_event->save();
+
 		}
 
-		//don't forget to set incident_id in the message
-		Event::$data->incident_id = $incident->id;
-		Event::$data->save();
-		
+          // TODO : Add option to automatically activate & verify reports	
+
 	}
 	
 
