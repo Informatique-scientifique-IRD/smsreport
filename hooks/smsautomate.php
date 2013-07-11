@@ -13,22 +13,22 @@
  */
 
 class smsautomate {
-	
+
 	/**
 	 * Registers the main event add method
 	 */
 	public function __construct()
 	{
-	
+
 		// Hook into routing
 		Event::add('system.pre_controller', array($this, 'add'));
-		
+
 		$this->settings = ORM::factory('smsautomate')
-				->where('id', 1)
-				->find();
-		
+			->where('id', 1)
+			->find();
+
 	}
-	
+
 	/**
 	 * Adds all the events to the main Ushahidi application
 	 */
@@ -46,12 +46,12 @@ class smsautomate {
 		$message = Event::$data->message;
 		$from = Event::$data->message_from;
 		$reporterId = Event::$data->reporter_id;
-                $message_date = Event::$data->message_date;
+		$message_date = Event::$data->message_date;
 
-                // We store a reference of the Event for updating it later
-                $sms_event = &Event::$data;
+		// We store a reference of the Event for updating it later
+		$sms_event = &Event::$data;
 
-                $form = array(
+		$form = array(
 			'incident_title' => '',
 			'incident_description' => '',
 			'incident_date' => '',
@@ -66,13 +66,13 @@ class smsautomate {
 			'person_last' => '',
 			'person_email' => '',
 			'form_id'	  => '',
-                        'custom_field' => array(),
-                        'service_id' => 1  // Mode : sms
-                );
+			'custom_field' => array(),
+			'service_id' => 1  // Mode : sms
+		);
 
 		//check to see if we're using the white list, and if so, if our SMSer is whitelisted
 		$num_whitelist = ORM::factory('smsautomate_whitelist')
-		->count_all();
+			->count_all();
 		if($num_whitelist > 0)
 		{
 			//check if the phone number of the incoming text is white listed
@@ -84,27 +84,27 @@ class smsautomate {
 				return;
 			}
 		}
-		
+
 		//the delimiter
 		$delimiter = $this->settings->delimiter;
-		
+
 		//the code word
 		$code_word = $this->settings->code_word;
-		
-		
+
+
 		//split up the string using the delimiter
 		$message_elements = explode($delimiter, $message);
-		
+
 		//echo Kohana::debug($message_elements);
-		
+
 		//check if the message properly exploded
 		$elements_count = count($message_elements);
-		
+
 		if( $elements_count < 4) //must have code word, lat, lon, title. Which is 4 elements
 		{
 			return;
 		}
-		
+
 		//check to see if they used the right code word, code word should be first
 		if(strtoupper($message_elements[0]) != strtoupper($code_word))
 		{
@@ -114,14 +114,14 @@ class smsautomate {
 		//start parsing
 		//latitude
 		$post['latitude'] = strtoupper(trim($message_elements[1]));
-				
+
 		//longitude
 		$post['longitude'] = strtoupper(trim($message_elements[2]));
-		
+
 		//title
 		$post['incident_title'] = trim($message_elements[3]);
-			
-                //location
+
+		//location
 		$location_description = "";
 		//check and see if we have a textual location
 		if($elements_count >= 5)
@@ -132,8 +132,8 @@ class smsautomate {
 		{
 			$location_description = "Sent Via SMS";
 		}
-                $post['location_name'] = $location_description;
-		
+		$post['location_name'] = $location_description;
+
 		$description = "";
 		//check and see if we have a description
 		if($elements_count >= 6)
@@ -141,17 +141,17 @@ class smsautomate {
 			$description = $description.trim($message_elements[5]);
 		}
 
-                // TODO NOTE : Make the appended text optionable and configurable
-                $post['incident_description'] = $description."\n\r\n\rThis reported was created automatically via SMS.";
-		
+		// TODO NOTE : Make the appended text optionable and configurable
+		$post['incident_description'] = $description."\n\r\n\rThis reported was created automatically via SMS.";
+
 		//check and see if we have categories
 		if($elements_count >=7)
 		{
 			$post['incident_category'] = explode(",", $message_elements[6]);
 		}
-		
-                //Date
-                $date = DateTime::createFromFormat('Y-m-d H:i:s', $message_date);
+
+		//Date
+		$date = DateTime::createFromFormat('Y-m-d H:i:s', $message_date);
 
 		$post['incident_date'] = $date->format('m/d/Y'); // mm/dd/yyyy
 		$post['incident_hour'] = $date->format('h');
@@ -165,64 +165,64 @@ class smsautomate {
 		echo "title: ". $title."<br/>";
 		echo "description: ". $description."<br/>";
 		echo "category: ". Kohana::debug($categories)."<br/>";
-		*/
-		
-		
-                // We re-use the same process as Reports_Controller->submit()
+		 */
+
+
+		// We re-use the same process as Reports_Controller->submit()
 		if (reports::validate($post))
-                {
-                    // STEP 1: SAVE LOCATION
-                    $location = new Location_Model();
-                    reports::save_location($post, $location);
+		{
+			// STEP 1: SAVE LOCATION
+			$location = new Location_Model();
+			reports::save_location($post, $location);
 
-                    // STEP 2: SAVE INCIDENT
-                    $incident = new Incident_Model();
-                    reports::save_report($post, $incident, $location->id);
+			// STEP 2: SAVE INCIDENT
+			$incident = new Incident_Model();
+			reports::save_report($post, $incident, $location->id);
 
-                    // STEP 2b: SAVE INCIDENT GEOMETRIES
-                    // We don't have any geometries here
-                    // reports::save_report_geometry($post, $incident);
+			// STEP 2b: SAVE INCIDENT GEOMETRIES
+			// We don't have any geometries here
+			// reports::save_report_geometry($post, $incident);
 
-                    // STEP 3: SAVE CATEGORIES
-                    reports::save_category($post, $incident);
+			// STEP 3: SAVE CATEGORIES
+			reports::save_category($post, $incident);
 
-                    // STEP 4: SAVE MEDIA
-                    // We don't have any media here
-                    // reports::save_media($post, $incident);
+			// STEP 4: SAVE MEDIA
+			// We don't have any media here
+			// reports::save_media($post, $incident);
 
-                    // STEP 5: SAVE CUSTOM FORM FIELDS
-                    reports::save_custom_fields($post, $incident);
+			// STEP 5: SAVE CUSTOM FORM FIELDS
+			reports::save_custom_fields($post, $incident);
 
-                    // STEP 6: SAVE PERSONAL INFORMATION
-                    reports::save_personal_info($post, $incident);
+			// STEP 6: SAVE PERSONAL INFORMATION
+			reports::save_personal_info($post, $incident);
 
-                    // Don't forget to update the message with Incident Id
-                    $sms_event->incident_id = $incident->id;
-                    $sms_event->save();
-                    
-                    // Run events
-                    Event::run('ushahidi_action.report_submit', $post);
-                    Event::run('ushahidi_action.report_add', $incident);
+			// Don't forget to update the message with Incident Id
+			$sms_event->incident_id = $incident->id;
+			$sms_event->save();
+
+			// Run events
+			Event::run('ushahidi_action.report_submit', $post);
+			Event::run('ushahidi_action.report_add', $incident);
 
 		} else {
 			echo "ERROR";
-		//	echo Kohana::debug($post);
-                        print_r($post->errors('report'));
+			//	echo Kohana::debug($post);
+			print_r($post->errors('report'));
 
-                        // Save the error trace inside the message
-                        $sms_event->message = 'VALIDATION ERROR' . "\n" . $sms_event->message;
+			// Save the error trace inside the message
+			$sms_event->message = 'VALIDATION ERROR' . "\n" . $sms_event->message;
 
-                        $errors = "\n\n" . 'ERROR TRACE :' . "\n" . print_r($post->errors('report'), TRUE);
-                        $sms_event->message .= $errors;
+			$errors = "\n\n" . 'ERROR TRACE :' . "\n" . print_r($post->errors('report'), TRUE);
+			$sms_event->message .= $errors;
 
-                        $sms_event->save();
+			$sms_event->save();
 
 		}
 
-          // TODO : Add option to automatically activate & verify reports	
+		// TODO : Add option to automatically activate & verify reports	
 
 	}
-	
+
 
 }
 
