@@ -1,31 +1,3 @@
-
-<h1> SMS Automate - Settings</h1>
-<?php print form::open(); ?>
-
-	<?php if ($form_error) { ?>
-	<!-- red-box -->
-		<div class="red-box">
-			<h3><?php echo Kohana::lang('ui_main.error');?></h3>
-			<ul>
-				<?php
-				foreach ($errors as $error_item => $error_description)
-				{
-				// print "<li>" . $error_description . "</li>";
-				print (!$error_description) ? '' : "<li>" . $error_description . "</li>";
-				}
-				?>
-			</ul>
-			</div>
-	<?php } ?>
-
-
-	<?php  if ($form_saved) {?>
-		<!-- green-box -->
-		<div class="green-box">
-		<h3><?php echo Kohana::lang('ui_main.configuration_saved');?></h3>
-		</div>
-	<?php } ?>
-
 <h4> 
 	<br/> For incoming SMS messages to work with this plugin the following format and ordering must be used.<br/>
 	
@@ -92,6 +64,3 @@
 <br/>
 
 <input type="image" src="<?php echo url::base() ?>media/img/admin/btn-save-settings.gif" class="save-rep-btn" style="margin-left: 0px;" />
-
-<?php print form::close(); ?>
-

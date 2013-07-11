@@ -9,64 +9,59 @@
 class Smsautomate_settings_Controller extends Admin_Controller
 {
 
-	function __construct()
-	{
-		parent::__construct();
-		$this->template->this_page = 'settings';
-
-		// If this is not a super-user account, redirect to dashboard
-		if(!$this->auth->logged_in('admin') && !$this->auth->logged_in('superadmin'))
-		{
-			url::redirect('admin/dashboard');
-		}
-	}
-	
 	public function index()
 	{
+
+		$this->template->this_page = 'addons';
+
+		// Standard Settings View
+		$this->template->content = new View("admin/addons/plugin_settings");
+		$this->template->content->title = "SMS Automate Settings";
 		
-		$this->template->content = new View('smsautomate/smsautomate_admin');
+		// Settings Form View
+		$this->template->content->settings_form = new View('smsautomate/smsautomate_admin');
 		
 		//create the form array
 		$form = array
-		(
-		        'delimiter' => "",
-			'code_word' => "",
-			'whitelist' => ""
-		);
-		
+			(
+				'delimiter' => "",
+				'code_word' => "",
+				'whitelist' => ""
+			);
+
 		$errors = $form;
 		$form_error = FALSE;
 		$form_saved = FALSE;
-				
+
 		// check, has the form been submitted if so check the input values and save them
 		if ($_POST)
 		{
 			// Instantiate Validation, use $post, so we don't overwrite $_POST
 			// fields with our own things
 			$post = new Validation($_POST);
-			
+
 			// Add some filters
 			$post->pre_filter('trim', TRUE);
 			$post->add_rules('delimiter', 'length[1,1]');
 			$post->add_rules('code_word', 'length[1,11]');
-			
-			 if ($post->validate())
+
+			if ($post->validate())
 			{
-				
-				$settings = ORM::factory('smsautomate')
-					->where('id', 1)
-					->find();
+
+				$settings = ORM::factory('smsautomate',1);
 				$settings->delimiter = $post->delimiter;
 				$settings->code_word = $post->code_word;
 				$settings->save();
 				$form_saved = TRUE;
+
+				// repopulate the form fields
 				$form = arr::overwrite($form, $post->as_array());
-				
+
 				//do the white list
-				
+
 				//delete everything in the white list db to make room for the new ones
 				ORM::factory('smsautomate_whitelist')->delete_all();
-				
+
 				$whitelist = nl2br(trim($post->whitelist));
 				if($whitelist != "" && $whitelist != null)
 				{
@@ -80,7 +75,7 @@ class Smsautomate_settings_Controller extends Admin_Controller
 					}
 				}
 			}
-			
+
 			// No! We have validation errors, we need to show the form again,
 			// with the errors
 			else
@@ -96,12 +91,10 @@ class Smsautomate_settings_Controller extends Admin_Controller
 		else
 		{
 			//get settings from the database
-			$settings = ORM::factory('smsautomate')
-				->where('id', 1)
-				->find();
+			$settings = ORM::factory('smsautomate',1);
 			$form['delimiter'] = $settings->delimiter;
 			$form['code_word'] = $settings->code_word;
-			
+
 			//get the white listed numbers
 			$whitelist = "";
 			$count = 0;
@@ -117,17 +110,20 @@ class Smsautomate_settings_Controller extends Admin_Controller
 			}
 			$form['whitelist'] = $whitelist;
 		}
+
+
 		
-		
-		
+		// Pass the $form on to the settings_form variable in the view
+		$this->template->content->settings_form->form = $form;
+
+		// Other variables
 		$this->template->content->form_saved = $form_saved;
-		$this->template->content->form = $form;
 		$this->template->content->form_error = $form_error;
 		$this->template->content->errors = $errors;
-		
-	}//end index method
-	
-	
 
-	
+	}//end index method
+
+
+
+
 }
