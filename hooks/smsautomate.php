@@ -51,7 +51,7 @@ class smsautomate {
 		// We store a reference of the Event for updating it later
 		$sms_event = &Event::$data;
 
-		$form = array(
+		$post = array(
 			'incident_title' => '',
 			'incident_description' => '',
 			'incident_date' => '',
@@ -150,6 +150,34 @@ class smsautomate {
 			$post['incident_category'] = explode(",", $message_elements[6]);
 		}
 
+		// Custom_forms
+		if($elements_count >= 8)
+		{
+			$custom_fields = customforms::get_custom_form_fields(FALSE,2,FALSE);
+
+			$post['form_id'] = trim($message_elements[7]);
+
+			if ( ! is_numeric($post['form_id']) )
+			{
+				echo 'ERROR in form id';
+				return;
+			}
+
+			if ( ($elements_count - 8) > count($custom_fields))
+			{
+				echo 'ERROR, too many args';
+				return;
+			}
+		
+			reset($custom_fields);
+			for ($i =8; $i < $elements_count; $i++)
+			{
+				list($field_id, $field) = each ($custom_fields);
+
+				$post['custom_field'][$field_id] = $message_elements[$i];
+			}
+		}
+
 		//Date
 		$date = DateTime::createFromFormat('Y-m-d H:i:s', $message_date);
 
@@ -213,6 +241,10 @@ class smsautomate {
 			$sms_event->message = 'VALIDATION ERROR' . "\n" . $sms_event->message;
 
 			$errors = "\n\n" . 'ERROR TRACE :' . "\n" . print_r($post->errors('report'), TRUE);
+			
+			// TODO We should also print error_message_args somewhere 
+			// (custom_forms)
+
 			$sms_event->message .= $errors;
 
 			$sms_event->save();
