@@ -168,13 +168,53 @@ class smsautomate {
 				echo 'ERROR, too many args';
 				return;
 			}
-		
+
+			//$temp_use_multival = false;
+			$temp_use_multival = true;
+
 			reset($custom_fields);
 			for ($i =8; $i < $elements_count; $i++)
 			{
 				list($field_id, $field) = each ($custom_fields);
 
-				$post['custom_field'][$field_id] = $message_elements[$i];
+				$response = '';
+
+				// Muli-values fields
+				if ( $temp_use_multival AND ($field['field_type'] >= 5 AND $field['field_type'] <=7) )
+				{
+					$defaults = explode(',' , $field['field_default']);
+					$response_ids = explode(',' , $message_elements[$i]);
+
+					foreach ($response_ids as $r_id)
+					{
+						$r_id = trim($r_id);
+						if ( ! is_numeric($r_id))
+						{
+							echo 'ERROR in multi id'."\n";
+							echo $field['field_name'] . '[' . $r_id . ']' . ' : The id `'. $r_id . '` is not numeric.';
+							return;
+						}
+
+						if ( ! array_key_exists($r_id, $defaults))
+						{
+							echo 'ERROR in multi id'."\n";
+							echo $field['field_name'] . '[' . $r_id . ']' . ' does not exist';
+							return;
+						}
+
+						if ( $response != '')
+						{
+							$response .= ',' . trim($defaults[$r_id]);
+						} else {
+							$response = trim($defaults[$r_id]);
+						}
+					}
+
+				} else {		// Other fields
+					$response = $message_elements[$i];
+				}
+
+				$post['custom_field'][$field_id] = $response;
 			}
 		}
 
@@ -234,14 +274,14 @@ class smsautomate {
 
 		} else {
 			echo "ERROR";
-			//	echo Kohana::debug($post);
+			//echo Kohana::debug($post);
 			print_r($post->errors('report'));
 
 			// Save the error trace inside the message
 			$sms_event->message = 'VALIDATION ERROR' . "\n" . $sms_event->message;
 
 			$errors = "\n\n" . 'ERROR TRACE :' . "\n" . print_r($post->errors('report'), TRUE);
-			
+
 			// TODO We should also print error_message_args somewhere 
 			// (custom_forms)
 
