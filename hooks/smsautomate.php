@@ -23,10 +23,7 @@ class smsautomate {
 		// Hook into routing
 		Event::add('system.pre_controller', array($this, 'add'));
 
-		$this->settings = ORM::factory('smsautomate')
-			->where('id', 1)
-			->find();
-
+		$this->settings = ORM::factory('smsautomate',1)->as_array();
 	}
 
 	/**
@@ -34,7 +31,8 @@ class smsautomate {
 	 */
 	public function add()
 	{
-		Event::add('ushahidi_action.message_sms_add', array($this, '_parse_sms'));		
+		Event::add('ushahidi_action.message_sms_add',
+					array($this, '_parse_sms'));
 	}
 
 	/**
@@ -47,6 +45,8 @@ class smsautomate {
 		$from = Event::$data->message_from;
 		$reporterId = Event::$data->reporter_id;
 		$message_date = Event::$data->message_date;
+
+		$settings = $this->settings;
 
 		// We store a reference of the Event for updating it later
 		$sms_event = &Event::$data;
@@ -85,15 +85,8 @@ class smsautomate {
 			}
 		}
 
-		//the delimiter
-		$delimiter = $this->settings->delimiter;
-
-		//the code word
-		$code_word = $this->settings->code_word;
-
-
 		//split up the string using the delimiter
-		$message_elements = explode($delimiter, $message);
+		$message_elements = explode($settings['delimiter'], $message);
 
 		//echo Kohana::debug($message_elements);
 
@@ -106,7 +99,7 @@ class smsautomate {
 		}
 
 		//check to see if they used the right code word, code word should be first
-		if(strtoupper($message_elements[0]) != strtoupper($code_word))
+		if(strtoupper($message_elements[0]) != strtoupper($settings['code_word']))
 		{
 			return;
 		}
@@ -141,8 +134,13 @@ class smsautomate {
 			$description = $description.trim($message_elements[5]);
 		}
 
-		// TODO NOTE : Make the appended text optionable and configurable
-		$post['incident_description'] = $description."\n\r\n\rThis reported was created automatically via SMS.";
+
+		if ($settings['append_to_desc'])
+		{
+			$description .= "\n\n" . $settings['append_to_desc_txt'];
+		}
+
+		$post['incident_description'] = $description;
 
 		//check and see if we have categories
 		if($elements_count >=7)
@@ -169,8 +167,6 @@ class smsautomate {
 				return;
 			}
 
-			//$temp_use_multival = false;
-			$temp_use_multival = true;
 
 			reset($custom_fields);
 			for ($i =8; $i < $elements_count; $i++)
@@ -180,7 +176,9 @@ class smsautomate {
 				$response = '';
 
 				// Muli-values fields
-				if ( $temp_use_multival AND ($field['field_type'] >= 5 AND $field['field_type'] <=7) )
+				if ( $settings['multival_resp_by_id'] 
+						AND ( $field['field_type'] >= 5 
+								AND $field['field_type'] <=7 ) )
 				{
 					$defaults = explode(',' , $field['field_default']);
 					$response_ids = explode(',' , $message_elements[$i]);
