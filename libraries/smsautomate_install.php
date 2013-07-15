@@ -39,6 +39,7 @@ class Smsautomate_Install {
 			`code_word` varchar(11) NOT NULL,
 			`auto_title` BOOLEAN NOT NULL,
 			`auto_desc` BOOLEAN NOT NULL,
+                        `auto_date` BOOLEAN NOT NULL,
 			`auto_approve` BOOLEAN NOT NULL,
 			`auto_verify` BOOLEAN NOT NULL,
 			`append_to_desc` BOOLEAN NOT NULL,
@@ -70,6 +71,7 @@ class Smsautomate_Install {
 			$settings->code_word = 'abc';
 			$settings->auto_title = false;
 			$settings->auto_desc = false;
+			$settings->auto_date = true;
 			$settings->auto_approve = false;
 			$settings->auto_verify = false;
 			$settings->append_to_desc = true;

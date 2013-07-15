@@ -29,6 +29,7 @@ class Smsautomate_settings_Controller extends Admin_Controller
 				'whitelist' => "", 
 				'auto_title' => "",
 				'auto_desc' => "",
+                                'auto_date' => "",
 				'auto_approve' => "",
 				'auto_verify' => "",
 				'append_to_desc' => "",
@@ -62,6 +63,7 @@ class Smsautomate_settings_Controller extends Admin_Controller
 			$post->add_rules('code_word', 'length[1,11]');
 			$post->add_rules('auto_title','required','between[0,1]');
 			$post->add_rules('auto_desc','required','between[0,1]');
+			$post->add_rules('auto_date','required','between[0,1]');
 			$post->add_rules('auto_approve','required','between[0,1]');
 			$post->add_rules('auto_verify','required','between[0,1]');
 			$post->add_rules('append_to_desc','required','between[0,1]');
@@ -84,6 +86,7 @@ class Smsautomate_settings_Controller extends Admin_Controller
 				$settings->code_word = $post->code_word;
 				$settings->auto_title = $post->auto_title;
 				$settings->auto_desc = $post->auto_desc;
+				$settings->auto_date = $post->auto_date;
 				$settings->auto_approve = $post->auto_approve;
 				$settings->auto_verify = $post->auto_verify;
 				$settings->append_to_desc = $post->append_to_desc;

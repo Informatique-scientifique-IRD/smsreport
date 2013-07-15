@@ -77,7 +77,12 @@
 				<h4><a href="#" class="tooltip" title="[Explanation here]">append_to_desc_txt</a></h4>
 				<?php print form::textarea('append_to_desc_txt', $form['append_to_desc_txt'], ' style="height:40px;"') ?>	
 			</div>
-			
+
+			<div class="row">
+				<h4><a href="#" class="tooltip" title="If this option is set, the date of the report will be the date when the SMS was received">Auto-date</a></h4>
+					<?php print form::dropdown('auto_date', $yesno_array, $form['auto_date']); ?>
+			</div>
+
 			<div class="row">
 				<h4><a href="#" class="tooltip" title="[Explanation here]Replace multi-value by list of id">EXPERIMENTAL : Multi-value by id</a></h4>
 					<?php print form::dropdown('multival_resp_by_id', $yesno_array, $form['multival_resp_by_id']); ?>
