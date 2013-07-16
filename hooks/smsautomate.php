@@ -124,13 +124,14 @@ class smsautomate {
 
 
 		// 1 : TITLE
+		$title ='';
 		if ( $settings['auto_title'])
 		{
-			//Todo auto-title feature
-			$post['incident_title'] = 'My title';
+			$title = 'SMS-Report by '.$sms['from'].' received '.$sms['date'];
 		} else {
-			$post['incident_title'] = next($m_elements);
+			$title = next($m_elements);
 		}
+		$post['incident_title'] = $title;
 
 
 		// 2 : CATEGORIES
@@ -166,8 +167,10 @@ class smsautomate {
 		$desc = "";
 		if ( $settings['auto_desc'] )
 		{
-			// TODO : auto-desc
-			$desc = 'My Desc';
+			$desc = 'Report created from SMS.'."\n\n".
+					'From : '.$sms['from']."\n".
+					'Date : '.$sms['date']."\n".
+					'Message :'."\n".$sms['m'];
 		} else {
 			$desc = next($m_elements);
 		}
