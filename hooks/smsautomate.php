@@ -24,6 +24,8 @@ class smsautomate {
 		Event::add('system.pre_controller', array($this, 'add'));
 
 		$this->settings = ORM::factory('smsautomate',1)->as_array();
+		$this->white_table = 'smsautomate_whitelist';
+		$this->event = NULL;
 	}
 
 	/**
@@ -40,17 +42,23 @@ class smsautomate {
 	 */
 	public function _parse_sms()
 	{
-		//the message
-		$message = Event::$data->message;
-		$from = Event::$data->message_from;
-		$reporterId = Event::$data->reporter_id;
-		$message_date = Event::$data->message_date;
+		//The message
+		$sms['m'] = Event::$data->message;
+		$sms['from'] = Event::$data->message_from;
+		$sms['reporterId'] = Event::$data->reporter_id;
+		$sms['date'] = Event::$data->message_date;
+		
+
+
+
+		// We store a reference of the Event for updating it later
+		$this->event = &Event::$data;
+
 
 		$settings = $this->settings;
 
-		// We store a reference of the Event for updating it later
-		$sms_event = &Event::$data;
-
+	
+		// Informations to fill in the report
 		$post = array(
 			'incident_title' => '',
 			'incident_description' => '',
@@ -62,114 +70,165 @@ class smsautomate {
 			'longitude' => '',
 			'location_name' => '',
 			'incident_category' => array(),
-			'person_first' => '',
-			'person_last' => '',
-			'person_email' => '',
 			'form_id'	  => '',
 			'custom_field' => array(),
 			'service_id' => 1  // Mode : sms
 		);
 
-		//check to see if we're using the white list, and if so, if our SMSer is whitelisted
-		$num_whitelist = ORM::factory('smsautomate_whitelist')
-			->count_all();
-		if($num_whitelist > 0)
+		//split up the string using the delimiter
+		$m_elements = explode($settings['delimiter'], $sms['m']);
+		$elements_count = count($m_elements);
+		$min_elements = $this->get_min_elements();
+
+		// === START PROCESSING ===
+
+		// 0a : CODE WORD
+		//		--> If nothing, exit without error : this SMS is not for us
+		if( strtoupper($m_elements[0]) 
+			!= strtoupper($settings['code_word']) )
 		{
-			//check if the phone number of the incoming text is white listed
-			$whitelist_number = ORM::factory('smsautomate_whitelist')
-				->where('phone_number', $from)
-				->count_all();
-			if($whitelist_number == 0)
+			// Nothing to say, maybe this sms is not for automatic processing
+			return;
+		}
+
+		// 0b : WHITELIST
+		if ( ! $this->is_whitelisted($sms['from']))
+		{
+			$this->p_error( 'Whitelist', 
+							'The number '.$sms['from'].' is not whitelisted');
+			return;
+		}
+
+		// 0c : VALID
+		//		--> Check if enough informations are provided
+		if( $elements_count < $min_elements) 
+		{
+			$this->p_error( 'Valid',
+				'Not enough arguments.'.
+			    'A valid report requires '.$min_elements.' elements '.
+			    'and '.$elements_count.' elements were provided');
+			return;
+		}
+
+
+		// == PRE-PROCESSING ==
+
+		foreach ($m_elements as $element)
+		{
+			$element = trim($element);
+		}
+
+		// == START PARSING ==
+
+		reset($m_elements);
+
+
+		// 1 : TITLE
+		if ( $settings['auto_title'])
+		{
+			//Todo auto-title feature
+			$post['incident_title'] = 'My title';
+		} else {
+			$post['incident_title'] = next($m_elements);
+		}
+
+
+		// 2 : CATEGORIES
+		$post['incident_category'] = explode(",", next($m_elements) );
+					
+
+		// 3 : DATE
+		$date = new DateTime;
+		if ( $settings['auto_date'])
+		{
+			// We get date from the sms
+			$date = $date->createFromFormat('Y-m-d H:i:s', $sms['date']);
+		} else {
+			// Date must be in yyyymmdd hhii inside SMS
+			$date = $date->createFromFormat('Ymd Hi', next($m_elements) );
+			if ( ! $date)
 			{
+				$this->p_error( 'Invalid Date',
+					'Unable to interpret : '.current($m_elements).
+					'Date must be in format yyyymmdd hhii, '.
+				    'like 19700314 1337 for 14th March 1970 at 13h37');
 				return;
 			}
 		}
+		$post['incident_date'] = $date->format('m/d/Y'); // mm/dd/yyyy
+		$post['incident_hour'] = $date->format('h');
+		$post['incident_minute'] = $date->format('i');
+		$post['incident_ampm'] = $date->format('a');
+		unset($date);
 
-		//split up the string using the delimiter
-		$message_elements = explode($settings['delimiter'], $message);
 
-		//echo Kohana::debug($message_elements);
-
-		//check if the message properly exploded
-		$elements_count = count($message_elements);
-
-		if( $elements_count < 4) //must have code word, lat, lon, title. Which is 4 elements
+		// 4 : DESCRIPTION
+		$desc = "";
+		if ( $settings['auto_desc'] )
 		{
-			return;
+			// TODO : auto-desc
+			$desc = 'My Desc';
+		} else {
+			$desc = next($m_elements);
 		}
-
-		//check to see if they used the right code word, code word should be first
-		if(strtoupper($message_elements[0]) != strtoupper($settings['code_word']))
-		{
-			return;
-		}
-
-		//start parsing
-		//latitude
-		$post['latitude'] = strtoupper(trim($message_elements[1]));
-
-		//longitude
-		$post['longitude'] = strtoupper(trim($message_elements[2]));
-
-		//title
-		$post['incident_title'] = trim($message_elements[3]);
-
-		//location
-		$location_description = "";
-		//check and see if we have a textual location
-		if($elements_count >= 5)
-		{
-			$location_description =trim($message_elements[4]);
-		}
-		if($location_description == "")
-		{
-			$location_description = "Sent Via SMS";
-		}
-		$post['location_name'] = $location_description;
-
-		$description = "";
-		//check and see if we have a description
-		if($elements_count >= 6)
-		{
-			$description = $description.trim($message_elements[5]);
-		}
-
 
 		if ($settings['append_to_desc'])
 		{
-			$description .= "\n\n" . $settings['append_to_desc_txt'];
+			$desc .= "\n\n" . $settings['append_to_desc_txt'];
 		}
 
-		$post['incident_description'] = $description;
+		$post['incident_description'] = $desc;
 
-		//check and see if we have categories
-		if($elements_count >=7)
-		{
-			$post['incident_category'] = explode(",", $message_elements[6]);
-		}
 
-		// Custom_forms
-		if($elements_count >= 8)
+		// 5 : LOCATION
+		$post['location_name'] = next($m_elements);
+
+
+		// 6-7 : LATITUDE / LONGITUDE
+
+		//latitude
+		$post['latitude'] = next($m_elements);
+
+		//longitude
+		$post['longitude'] = next($m_elements);
+
+
+
+		// 8 : CUSTOM FIELDS
+		if($elements_count > $min_elements)
 		{
 			$custom_fields = customforms::get_custom_form_fields(FALSE,2,FALSE);
 
-			$post['form_id'] = trim($message_elements[7]);
+			// 8a : FORM
+			$post['form_id'] = next($m_elements);
 
 			if ( ! is_numeric($post['form_id']) )
 			{
-				echo 'ERROR in form id';
+				$this->p_error( 'Invalid form_id',
+					'form_id provided is invalid : '. $post['form_id'].
+					' Value must be numeric');
 				return;
 			}
 
-			if ( ($elements_count - 8) > count($custom_fields))
+			// 8b : VALID
+			//		The "+1" is for the element "form_id"
+			if ( $elements_count - $min_elements > ( count($custom_fields) +1 ))
 			{
-				echo 'ERROR, too many args';
+				$this->p_error( 'Too many args for custom fields',
+					'Not enough arguments.'.
+					'There is '.count($custom_fields).' custom fields in this form '.
+				    '(id:'.$post['form_id'].') and you provided '.
+					($elements_count - $min_elements - 1).
+					'arguments in your message .'.
+				    'You provided :'."\n".
+					Kohana::debug(array_slice($m_elements, key($m_elements) +1)));
 				return;
 			}
 
-
+			// = START PROCESSING FIELDS =
 			reset($custom_fields);
-			for ($i =8; $i < $elements_count; $i++)
+
+			while( ($element = next($m_elements)) !== false)
 			{
 				list($field_id, $field) = each ($custom_fields);
 
@@ -181,22 +240,24 @@ class smsautomate {
 								AND $field['field_type'] <=7 ) )
 				{
 					$defaults = explode(',' , $field['field_default']);
-					$response_ids = explode(',' , $message_elements[$i]);
+					$response_ids = explode(',' , $element );
 
 					foreach ($response_ids as $r_id)
 					{
 						$r_id = trim($r_id);
 						if ( ! is_numeric($r_id))
 						{
-							echo 'ERROR in multi id'."\n";
-							echo $field['field_name'] . '[' . $r_id . ']' . ' : The id `'. $r_id . '` is not numeric.';
+							$this->p_error( 'Multi-value by id',
+								$field['field_name'] . '[' . $r_id . ']' .
+							    ' : The id `'. $r_id . '` is not numeric.');
 							return;
 						}
 
 						if ( ! array_key_exists($r_id, $defaults))
 						{
-							echo 'ERROR in multi id'."\n";
-							echo $field['field_name'] . '[' . $r_id . ']' . ' does not exist';
+							$this->p_error( 'Multi-value by id',
+								$field['field_name'] . 
+								'[' . $r_id . ']' . ' does not exist');
 							return;
 						}
 
@@ -209,29 +270,12 @@ class smsautomate {
 					}
 
 				} else {		// Other fields
-					$response = $message_elements[$i];
+					$response = $element;
 				}
 
 				$post['custom_field'][$field_id] = $response;
 			}
 		}
-
-		//Date
-		$date = DateTime::createFromFormat('Y-m-d H:i:s', $message_date);
-
-		$post['incident_date'] = $date->format('m/d/Y'); // mm/dd/yyyy
-		$post['incident_hour'] = $date->format('h');
-		$post['incident_minute'] = $date->format('i');
-		$post['incident_ampm'] = $date->format('a');
-
-		//for testing:
-		/*
-		echo "lat: ". $lat."<br/>";
-		echo "lon: ". $lon."<br/>";
-		echo "title: ". $title."<br/>";
-		echo "description: ". $description."<br/>";
-		echo "category: ". Kohana::debug($categories)."<br/>";
-		 */
 
 
 		// We re-use the same process as Reports_Controller->submit()
@@ -263,34 +307,93 @@ class smsautomate {
 			reports::save_personal_info($post, $incident);
 
 			// Don't forget to update the message with Incident Id
-			$sms_event->incident_id = $incident->id;
-			$sms_event->save();
+			$this->event->incident_id = $incident->id;
+			$this->event->save();
 
 			// Run events
 			Event::run('ushahidi_action.report_submit', $post);
 			Event::run('ushahidi_action.report_add', $incident);
 
+			// For debug
+			// echo Kohana::debug($post);
 		} else {
-			echo "ERROR";
-			//echo Kohana::debug($post);
-			print_r($post->errors('report'));
+			$this->p_error( 'Validation',
+				'The SMS did not pass the validation process. '.
+				"\n\n" . 'ERROR MESSAGES :' . "\n".
+				Kohana::debug($post->errors('report')));
 
-			// Save the error trace inside the message
-			$sms_event->message = 'VALIDATION ERROR' . "\n" . $sms_event->message;
-
-			$errors = "\n\n" . 'ERROR TRACE :' . "\n" . print_r($post->errors('report'), TRUE);
-
-			// TODO We should also print error_message_args somewhere 
-			// (custom_forms)
-
-			$sms_event->message .= $errors;
-
-			$sms_event->save();
-
+				return;
 		}
 
 		// TODO : Add option to automatically activate & verify reports	
 
+	}
+
+	/**
+	 * Check to see if we're using the white list, 
+	 *		and if so, if our SMSer is whitelisted
+	 *
+	 *	@param int $from Sender of the SMS
+	 */
+	private function is_whitelisted($from)
+	{		
+		$wl = ORM::factory($this->white_table);
+
+		// Check if there is numbers in the table
+		if($wl->count_all() > 0)
+		{
+			//check if the phone number of the incoming text is white listed
+			$row = $wl->where('phone_number', $from)->find();
+
+			return $row->loaded();
+
+		} else {
+			return true;	// Granted for all if no number specified
+		}
+	}
+	
+	/**
+	 * Get the minimal number of elements required by settings
+	 */
+	private function get_min_elements()
+	{
+		$settings = $this->settings;
+
+		/* Worse case, 8 elements :
+		 *	Code, title, category, date, description, location, latitude, 
+		 *		longitude
+		 *	FormID and custom forms are optionnal
+		 */
+		$n = 8;
+
+		if ($settings['auto_title'])
+		{
+			$n--;
+		}
+
+		if ($settings['auto_date'])
+		{
+			$n--;
+		}
+
+		if ($settings['auto_desc'])
+		{
+			$n--;
+		}
+
+		return $n;
+	}
+		
+	private function p_error($head, $msg)
+	{
+		echo 'ERROR ' . $head . "\n\n" . $msg;
+
+		if ( $this->settings['append_errors'] )
+		{
+			$this->event->message = 'ERROR ' . $head . "\n\n" . $this->event->message;
+			$this->event->message .= "\n\n" . $msg;
+			$this->event->save();
+		}
 	}
 
 

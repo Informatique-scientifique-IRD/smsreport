@@ -39,7 +39,7 @@ class Smsautomate_Install {
 			`code_word` varchar(11) NOT NULL,
 			`auto_title` BOOLEAN NOT NULL,
 			`auto_desc` BOOLEAN NOT NULL,
-                        `auto_date` BOOLEAN NOT NULL,
+			`auto_date` BOOLEAN NOT NULL,
 			`auto_approve` BOOLEAN NOT NULL,
 			`auto_verify` BOOLEAN NOT NULL,
 			`append_to_desc` BOOLEAN NOT NULL,
