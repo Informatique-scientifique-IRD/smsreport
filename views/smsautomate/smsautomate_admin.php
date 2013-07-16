@@ -9,16 +9,13 @@
 				For incoming SMS messages to work with this plugin the following format and ordering must be used.
 			</p>	
 			<div style="padding:10px;margin:20px; font-style:italic; border: 1px solid black;">
-				 &lt;Code Word&gt;&lt;delimiter&gt;
-				&lt;Decimal Degree Latitude&gt;&lt;delimiter&gt;&lt;Decimal Degree Longitude&gt;&lt;delimiter&gt;
-				&lt;Title&gt;&lt;delimiter&gt;&lt;Location Description&gt;&lt;delimiter&gt;
-				&lt;Event Description&gt;&lt;delimiter&gt;&lt;Category Codes seperated by commas&gt;
+				<?php echo $example_format; ?>
 			</div>
 			
 			<p>So for example if we use ';' as our delimiter and "abc" as our code word then the following:</p>
 		
 			<div style="padding:10px;margin:20px; font-style:italic; border: 1px solid black;">
-				abc;7.77;-9.42;My Title;Zorzor, Liberia;The description of the event;1,3,4
+				<?php echo $example_sms; ?>
 			</div>
 			<p>
 				This would be converted into a report at latitude 7.77 and longitude -9.42, calling this location "Zorzor Liberia", with a title of "My Title", a description of 

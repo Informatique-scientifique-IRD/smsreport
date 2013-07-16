@@ -29,7 +29,7 @@ class Smsautomate_settings_Controller extends Admin_Controller
 				'whitelist' => "", 
 				'auto_title' => "",
 				'auto_desc' => "",
-                                'auto_date' => "",
+				'auto_date' => "",
 				'auto_approve' => "",
 				'auto_verify' => "",
 				'append_to_desc' => "",
@@ -169,6 +169,9 @@ class Smsautomate_settings_Controller extends Admin_Controller
 			'1'=>utf8::ucfirst(Kohana::lang('ui_main.yes')),
 			'0'=>utf8::ucfirst(Kohana::lang('ui_main.no')));
 
+		$this->template->content->settings_form->example_format = htmlentities($this->_get_format($form));
+		$this->template->content->settings_form->example_sms = htmlentities($this->_get_format($form, true));
+
 		// Other variables
 		$this->template->content->form_saved = $form_saved;
 		$this->template->content->form_error = $form_error;
@@ -180,4 +183,43 @@ class Smsautomate_settings_Controller extends Admin_Controller
 	// Database::table_exists($table) returns TRUE or FALSE depending on whether the specified table exists in the database.
 	// Database::list_fields($table) returns an array of the fields (columns) in the specified tabl
 
+	private function _get_format($settings, $example_mode = false)
+	{
+		$example = array(
+			'Code' => $settings['code_word'],
+			'Title' => 'My new report',
+			'Categories' => '1,2',
+			'Date' => '20130716 1337',
+			'Description' => 'Something amazing happened to me here',
+			'Location' => 'Montpellier',
+			'Latitude' => '43.61',
+			'Longitude' => '3.88');
+
+		// TODO : how to present custom forms ?
+		//	'Form ID' => '2',
+
+		if ($settings['auto_title'])
+		{
+			unset($example['Title']);
+		}
+
+		if ($settings['auto_date'])
+		{
+			unset($example['Date']);
+		}
+
+		if ($settings['auto_desc'])
+		{
+			unset($example['Description']);
+		}
+
+		if($example_mode)
+		{
+			return implode($settings['delimiter'], $example);
+		} else {
+			return implode($settings['delimiter'],  array_keys($example));
+		}
+	}
 }
+		
+

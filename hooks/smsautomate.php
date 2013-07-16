@@ -127,7 +127,7 @@ class smsautomate {
 		$title ='';
 		if ( $settings['auto_title'])
 		{
-			$title = 'SMS-Report by '.$sms['from'].' received '.$sms['date'];
+			$title = 'SMS-Report by '.$sms['from'].' received on'.$sms['date'];
 		} else {
 			$title = next($m_elements);
 		}
