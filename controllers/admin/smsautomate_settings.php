@@ -177,11 +177,6 @@ class Smsautomate_settings_Controller extends Admin_Controller
 	}//end index method
 
 
-	public function _strtobool($str)
-	{
-		return ($str == '1') ? true : false;
-	}
-
 	// Database::table_exists($table) returns TRUE or FALSE depending on whether the specified table exists in the database.
 	// Database::list_fields($table) returns an array of the fields (columns) in the specified tabl
 
