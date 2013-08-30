@@ -1,11 +1,11 @@
 <?php
 /*------------------------------------------------------------------------------
  *
- * Settings table model
+ * Location table model
  * 
- * File :         models/smsreport_whitelist.php
+ * File :         models/smsreport_location.php
  * Project :      SMS Report
- * Last Modified :ven. 30 août 2013 11:02:50 CEST
+ * Last Modified :ven. 30 août 2013 11:27:44 CEST
  * Created :      juillet 2013
  *
  * Original Copyright :
@@ -24,12 +24,25 @@
  *----------------------------------------------------------------------------*/
 defined('SYSPATH') or die('No direct script access.');
 
+
 /**
- * Model for plugin whitelist numbers
+ * Model for plugin location table
+ *
+ * (table can be configured manually in config file)
  */
-class Smsautomate_whitelist_Model extends ORM
+class Smsreport_location_Model extends ORM
 {
-	
 	// Database table name
-	protected $table_name = 'smsautomate_whitelist';
+	protected $table_name = '';
+
+	/**
+	 * Special constructor, 
+	 * construct object with table given in config file
+	 */
+	function __construct($id = NULL)
+	{
+		$this->table_name = Kohana::config('smsreport.location.table');
+		parent::__construct($id);
+	}
+
 }

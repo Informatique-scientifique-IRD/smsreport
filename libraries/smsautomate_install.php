@@ -1,18 +1,32 @@
 <?php
-/**
- * Performs install/uninstall methods for the smsautomate plugin
+/**-----------------------------------------------------------------------------
  *
- * PHP version 5
- * LICENSE: This source file is subject to LGPL license 
- * that is available through the world-wide-web at the following URI:
- * http://www.gnu.org/copyleft/lesser.html
- * @author	   Ushahidi Team <team@ushahidi.com> 
- * @package    Ushahidi - http://source.ushahididev.com
- * @module	   smsautomate Installer
- * @copyright  Ushahidi - http://www.ushahidi.com
- * @license    http://www.gnu.org/copyleft/lesser.html GNU Lesser General Public License (LGPL) 
- */
+ * Install/uninstall methods for the smsreport plugin
+ * 
+ * File :         librairies/smsreport_install.php
+ * Project :      SMS Report
+ * Last Modified :ven. 30 août 2013 11:23:12 CEST
+ * Created :      juillet 2013
+ *
+ * Original Copyright :
+ *  This project was originally forked from SMS Automate by John Etherton,
+      available at https://github.com/jetherton/smsautomate
+ *
+ * Author :       G.F.
+ * Organization : IRD - UMR GRED
+ * Copyright :    IRD - UMR GRED, 2013
+ * Licence :      LGPL
+ * 
+ *  You should have received a copy of the GNU Lesser General Public License
+ *   along with SMS Report. 
+ *   If not, see <http://www.gnu.org/licenses/>.
+ *
+ *----------------------------------------------------------------------------*/
+defined('SYSPATH') or die('No direct script access.');
 
+/**
+ * Installer/uninstaller of the plugin
+ */
 class Smsautomate_Install {
 
 	/**
@@ -21,10 +35,12 @@ class Smsautomate_Install {
 	public function __construct()
 	{
 		$this->db = Database::instance();
-		$this->table = 'smsautomate';
-		$this->table_white = 'smsautomate_whitelist';
 
-		$this->pre = Kohana::config('database.default.table_prefix');
+		$pre = Kohana::config('database.default.table_prefix');
+
+		$this->table = $pre.'smsautomate';
+		$this->table_white = $pre.'smsautomate_whitelist';
+
 	}
 
 	/**
@@ -32,71 +48,58 @@ class Smsautomate_Install {
 	 */
 	public function run_install()
 	{
-		// Create the database tables.
-		$this->db->query('CREATE TABLE IF NOT EXISTS `'.$this->pre.$this->table.'` (
-			`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-			`delimiter` varchar(1) NOT NULL,
-			`code_word` varchar(11) NOT NULL,
-			`auto_title` BOOLEAN NOT NULL,
-			`auto_desc` BOOLEAN NOT NULL,
-			`auto_date` BOOLEAN NOT NULL,
-			`auto_approve` BOOLEAN NOT NULL,
-			`auto_verify` BOOLEAN NOT NULL,
-			`append_to_desc` BOOLEAN NOT NULL,
-			`append_to_desc_txt` text NOT NULL DEFAULT "",
-			`multival_resp_by_id` BOOLEAN NOT NULL,
-			`locate_from_list` BOOLEAN NOT NULL,
-			`fill_empty_gps_by_loc` BOOLEAN NOT NULL,
-			`locate_from_list_table` varchar(50) NULL DEFAULT NULL,
-			`locate_from_list_id` varchar(50) NULL DEFAULT NULL,
-			`locate_from_list_name` varchar(50) NULL DEFAULT NULL,
-			`locate_from_list_lat` varchar(50) NULL DEFAULT NULL,
-			`locate_from_list_lon` varchar(50) NULL DEFAULT NULL,
-			`append_errors` BOOLEAN NOT NULL,
-			PRIMARY KEY (`id`)
-		) DEFAULT CHARSET=utf8');
 
-		$this->db->query('CREATE TABLE IF NOT EXISTS `'.$this->pre.$this->table_white.'` (
+		// Create the settings table
+		$this->db->query('CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
+							  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+							  `key` varchar(100) NOT NULL DEFAULT \'\',
+							  `value` text ,
+							  PRIMARY KEY (`id`),
+							  UNIQUE KEY `uq_smsreport_settings_key` (`key`)
+							) ENGINE=MyISAM DEFAULT CHARSET=utf8');
+
+		// Create whitelist table
+		$this->db->query('CREATE TABLE IF NOT EXISTS `'.$this->table_white.'` (
 			`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
 			`phone_number` varchar(20) NOT NULL,
 			PRIMARY KEY (`id`)
-		) DEFAULT CHARSET=utf8');
+		) ENGINE=MyISAM DEFAULT CHARSET=utf8');
 
 		//Create default settings if not exists
-		if( ORM::factory($this->table, 1)->count_all() == 0)
+		if( ORM::factory('smsautomate')->count_all() == 0)
 		{
-			$settings = ORM::factory($this->table);
-			$settings->id = 1;
-			$settings->delimiter = '#';
-			$settings->code_word = 'abc';
-			$settings->auto_title = false;
-			$settings->auto_desc = false;
-			$settings->auto_date = true;
-			$settings->auto_approve = false;
-			$settings->auto_verify = false;
-			$settings->append_to_desc = true;
-			$settings->append_to_desc_txt = 'This reported was created automatically via SMS.';
-			$settings->multival_resp_by_id = false;
-			$settings->locate_from_list = false;
-			$settings->fill_empty_gps_by_loc = false;
-			$settings->locate_from_list_table = NULL;
-			$settings->locate_from_list_id = NULL;
-			$settings->locate_from_list_name = NULL;
-			$settings->locate_from_list_lat = NULL;
-			$settings->locate_from_list_lon = NULL;
-			$settings->append_errors = true;
+			$s = ORM::factory('smsautomate');
 
-			$settings->save();
+			$s::save_setting('delimiter', '#');
+			$s::save_setting('code_word', 'abc');
+			$s::save_setting('auto_title', '0');
+			$s::save_setting('auto_desc', '0');
+			$s::save_setting('auto_date', '1');
+			$s::save_setting('auto_approve', '0');
+			$s::save_setting('auto_verify', '0');
+			$s::save_setting('append_to_desc', '1');
+			$s::save_setting('append_to_desc_txt', 'This report was created by SMS Report.');
+			$s::save_setting('multival_resp_by_id', '0');
+			$s::save_setting('locate_from_list', '0');
+			$s::save_setting('fill_empty_gps_by_loc', '0');
+			$s::save_setting('locate_from_list_id', NULL);
+			$s::save_setting('loc_code_field', NULL);
+			$s::save_setting('locate_from_list_name', NULL);
+			$s::save_setting('locate_from_list_lat', NULL);
+			$s::save_setting('locate_from_list_lon', NULL);
+			$s::save_setting('coord_type_field', NULL);
+			$s::save_setting('append_errors', '1');
+		}
+
 	}
 
-	}
 
 	/**
 	 * Deletes the database tables for the actionable module
 	 */
 	public function uninstall()
 	{
-		$this->db->query('DROP TABLE `'.$this->pre.$this->table.'`');
-		$this->db->query('DROP TABLE `'.$this->pre.$this->table_white.'`');
+		$this->db->query('DROP TABLE `'.$this->table.'`');
+		$this->db->query('DROP TABLE `'.$this->table_white.'`');
 	}
-	}
+}

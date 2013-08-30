@@ -23,10 +23,11 @@ class smsautomate {
 		// Hook into routing
 		Event::add('system.pre_controller', array($this, 'add'));
 
-		$this->settings = ORM::factory('smsautomate',1)->as_array();
+		$this->settings = ORM::factory('smsautomate')->get_array();
 		$this->white_table = 'smsautomate_whitelist';
 		$this->event = NULL;
 	}
+
 
 	/**
 	 * Adds all the events to the main Ushahidi application
@@ -36,6 +37,7 @@ class smsautomate {
 		Event::add('ushahidi_action.message_sms_add',
 					array($this, '_parse_sms'));
 	}
+
 
 	/**
 	 * Check the SMS message and parse it
@@ -70,15 +72,26 @@ class smsautomate {
 			'longitude' => '',
 			'location_name' => '',
 			'incident_category' => array(),
-			'form_id'	  => '',
+			'form_id' => 1,  // Default form
 			'custom_field' => array(),
 			'service_id' => 1  // Mode : sms
 		);
 
-		//split up the string using the delimiter
+		// split up the string using the delimiter
 		$m_elements = explode($settings['delimiter'], $sms['m']);
 		$elements_count = count($m_elements);
 		$min_elements = $this->get_min_elements();
+
+		// APPROVE / VERIFY 
+		$post['incident_active'] = ($settings['auto_approve']) ? 1 : 0;
+		$post['incident_verified'] = ($settings['auto_verify']) ? 1 : 0;
+
+		// location table & special fields
+		$loc_table = Smsreport_Controller::get_loc_table();
+		$special = array(
+			'loc_id' => NULL,
+			'gps_replaced' => 0,
+		);
 
 		// === START PROCESSING ===
 
@@ -95,7 +108,7 @@ class smsautomate {
 		if ( ! $this->is_whitelisted($sms['from']))
 		{
 			$this->p_error( 'Whitelist', 
-							'The number '.$sms['from'].' is not whitelisted');
+			'The number '.$sms['from'].' is not whitelisted');
 			return;
 		}
 
@@ -127,7 +140,7 @@ class smsautomate {
 		$title ='';
 		if ( $settings['auto_title'])
 		{
-			$title = 'SMS-Report by '.$sms['from'].' received on'.$sms['date'];
+			$title = 'SMS-Report by '.$sms['from'].' received on '.$sms['date'];
 		} else {
 			$title = next($m_elements);
 		}
@@ -136,7 +149,15 @@ class smsautomate {
 
 		// 2 : CATEGORIES
 		$post['incident_category'] = explode(",", next($m_elements) );
-					
+		foreach($post['incident_category'] as $cat)
+		{
+			if( ! ORM::factory('category')->is_valid_category($cat))
+			{
+				$this->p_error( 'Invalid Category',
+					'The category : '.$cat.' doesn\'t exist');
+				return;
+			}
+		}
 
 		// 3 : DATE
 		$date = new DateTime;
@@ -184,70 +205,145 @@ class smsautomate {
 
 
 		// 5 : LOCATION
-		$post['location_name'] = next($m_elements);
+		$location = '';
+
+		//We also retrieve data for Latitude/Longitude if needed
+		$location_lat = '';
+		$location_lon = '';
+
+		// We need this result for lat/lon
+		$loc_result = NULL;
+
+		if ( ($loc_table !== false ) AND $settings['locate_from_list'])
+		{
+			$col_id = $settings['locate_from_list_id'];
+			$col_name = $settings['locate_from_list_name'];
+			$col_lat = $settings['locate_from_list_lat'];
+			$col_lon = $settings['locate_from_list_lon'];
+
+			$loc_id = next($m_elements);
+
+			$loc_result = ORM::factory('smsreport_location')
+							  ->where($col_id, $loc_id)
+							  ->find();
+
+			if ($loc_result->loaded )
+			{
+				// Latitude/Longitude of location if useful
+				if( $settings['fill_empty_gps_by_loc'])
+				{
+					$location_lat = $loc_result->$col_lat;
+					$location_lon = $loc_result->$col_lon;
+				}
+
+				$location = $loc_result->$col_name;
+
+				// Save the location id
+				$special['loc_id'] = $loc_id;
+
+			} else {
+				// If there is no result, we use the code as location name
+				$location = $loc_id;
+			}
+
+
+		} else {
+			$location = next($m_elements);
+		}
+		$post['location_name'] = $location;
 
 
 		// 6-7 : LATITUDE / LONGITUDE
 
-		//latitude
-		$post['latitude'] = next($m_elements);
+		$lat = next($m_elements);
+		$lon = next($m_elements);
 
-		//longitude
-		$post['longitude'] = next($m_elements);
+		if ( ($loc_table !== false ) 
+			 AND $settings['locate_from_list']
+			 AND $settings['fill_empty_gps_by_loc'])
+		{
+			if ($lat == '' OR $lon == '')
+			{
+				$lat = $location_lat;
+				$lon = $location_lon;
+				$special['gps_replaced'] = 1;
+			}
+		}
 
+		$post['latitude'] = $lat;
+		$post['longitude'] = $lon;
 
 
 		// 8 : CUSTOM FIELDS
+
 		if($elements_count > $min_elements)
 		{
-			$custom_fields = customforms::get_custom_form_fields(FALSE,2,FALSE);
-
 			// 8a : FORM
 			$post['form_id'] = next($m_elements);
 
-			if ( ! is_numeric($post['form_id']) )
+			// Check if integer
+			if ( ! ctype_digit($post['form_id']) )
 			{
 				$this->p_error( 'Invalid form_id',
 					'form_id provided is invalid : '. $post['form_id'].
-					' Value must be numeric');
+					' Value must be integer');
 				return;
 			}
 
-			// 8b : VALID
+			// Form exists ?
+			if( ! ORM::factory('form')->is_valid_form($post['form_id']) )
+			{
+				$this->p_error( 'Invalid form_id',
+					'form_id provided is invalid : '. $post['form_id'].
+					' This form doesn\'t exists');
+				return;
+			}
+
+			// Get the forms fields
+			$custom_fields = customforms::get_custom_form_fields(FALSE,$post['form_id'],FALSE);
+			//var_dump($custom_fields);
+
+			// 8b : NOT TOO MUCH ARGS
 			//		The "+1" is for the element "form_id"
 			if ( $elements_count - $min_elements > ( count($custom_fields) +1 ))
 			{
 				$this->p_error( 'Too many args for custom fields',
-					'Not enough arguments.'.
+					'Too many arguments.'.
 					'There is '.count($custom_fields).' custom fields in this form '.
 				    '(id:'.$post['form_id'].') and you provided '.
 					($elements_count - $min_elements - 1).
-					'arguments in your message .'.
-				    'You provided :'."\n".
+					' arguments in your message.'.
+				    ' You provided :'."\n".
 					Kohana::debug(array_slice($m_elements, key($m_elements) +1)));
 				return;
 			}
 
 			// = START PROCESSING FIELDS =
+			// We start from the first field specified
 			reset($custom_fields);
 
 			while( ($element = next($m_elements)) !== false)
 			{
+				// Current field
 				list($field_id, $field) = each ($custom_fields);
 
 				$response = '';
 
-				// Muli-values fields
+				// Muli-values fields, if value by id activated
 				if ( $settings['multival_resp_by_id'] 
-						AND ( $field['field_type'] >= 5 
-								AND $field['field_type'] <=7 ) )
+						AND ( customforms::field_is_multi_value($field)))
 				{
+					// Get possible answers
 					$defaults = explode(',' , $field['field_default']);
+					// Get given ids
 					$response_ids = explode(',' , $element );
+
+					$response_array = array();
 
 					foreach ($response_ids as $r_id)
 					{
-						$r_id = trim($r_id);
+						$r_id = trim($r_id); // Without spaces
+						// Not numeric
 						if ( ! is_numeric($r_id))
 						{
 							$this->p_error( 'Multi-value by id',
@@ -256,6 +352,7 @@ class smsautomate {
 							return;
 						}
 
+						// Don't exists
 						if ( ! array_key_exists($r_id, $defaults))
 						{
 							$this->p_error( 'Multi-value by id',
@@ -264,13 +361,11 @@ class smsautomate {
 							return;
 						}
 
-						if ( $response != '')
-						{
-							$response .= ',' . trim($defaults[$r_id]);
-						} else {
-							$response = trim($defaults[$r_id]);
-						}
+						$response_array[] = trim($defaults[$r_id]);
 					}
+
+					// Save responses
+					$response = implode(',' , $response_array);
 
 				} else {		// Other fields
 					$response = $element;
@@ -280,6 +375,37 @@ class smsautomate {
 			}
 		}
 
+		// 9 - SPECIAL FIELDS
+
+		if ( ($loc_table !== false ) AND $settings['locate_from_list'])
+		{
+			// Save location code
+			$field = $settings['loc_code_field'];
+			$field_id = $this->get_cfield_id_by_name($post['form_id'], $field);
+
+			if($field_id !== false)
+			{
+				$post['custom_field'][$field_id] = $special['loc_id'];
+			} // else : do nothing
+
+
+			if( $settings['fill_empty_gps_by_loc'])
+			{
+				// Save if gps was replaced
+				$field = $settings['coord_type_field'];
+				$field_id = $this->get_cfield_id_by_name($post['form_id'], $field);
+
+				if($field_id !== false)
+				{
+					$post['custom_field'][$field_id] = $special['gps_replaced'];
+				} // else : do nothing
+			}
+		}
+
+
+
+		// For debug
+		// echo Kohana::debug($post);
 
 		// We re-use the same process as Reports_Controller->submit()
 		if (reports::validate($post))
@@ -291,8 +417,11 @@ class smsautomate {
 			// STEP 2: SAVE INCIDENT
 			$incident = new Incident_Model();
 			reports::save_report($post, $incident, $location->id);
+			
+			// STEP 2b: Record Approval/Verification Action
+			reports::verify_approve($incident);
 
-			// STEP 2b: SAVE INCIDENT GEOMETRIES
+			// STEP 2c: SAVE INCIDENT GEOMETRIES
 			// We don't have any geometries here
 			// reports::save_report_geometry($post, $incident);
 
@@ -328,9 +457,42 @@ class smsautomate {
 				return;
 		}
 
-		// TODO : Add option to automatically activate & verify reports	
 
 	}
+
+
+
+/*==============================================================================
+ * Private functions
+ =============================================================================*/
+
+	/**
+	 * Returns the field id nammed $name in $form
+	 *	or false otherwise
+	 *
+	 * @param int $form The form id
+	 * @param string $name The name to find
+	 */
+	private function get_cfield_id_by_name($form, $name)
+	{
+		// empty or '' => nothing to search
+		if( ( $name == '') OR ($name  === NULL) )
+			return false;
+
+		// Find the field
+		$field = ORM::factory('form_field')
+			->where('field_name', $name)
+			->where('form_id',$form)
+			->find();
+
+		if($field->loaded)
+		{
+			return $field->id;
+		} else {
+			return false;
+		}
+	}
+
 
 	/**
 	 * Check to see if we're using the white list, 
@@ -348,13 +510,14 @@ class smsautomate {
 			//check if the phone number of the incoming text is white listed
 			$row = $wl->where('phone_number', $from)->find();
 
-			return $row->loaded();
+			return $row->loaded;
 
 		} else {
 			return true;	// Granted for all if no number specified
 		}
 	}
 	
+
 	/**
 	 * Get the minimal number of elements required by settings
 	 */
@@ -387,6 +550,11 @@ class smsautomate {
 		return $n;
 	}
 		
+
+	/**
+	 * This function echo the error
+	 *  and if "append_error" is set, appends the error to text message
+	 */
 	private function p_error($head, $msg)
 	{
 		echo 'ERROR ' . $head . "\n\n" . $msg;
