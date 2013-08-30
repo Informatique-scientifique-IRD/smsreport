@@ -5,7 +5,7 @@
  * 
  * File :         librairies/smsreport_install.php
  * Project :      SMS Report
- * Last Modified :ven. 30 août 2013 11:23:12 CEST
+ * Last Modified :ven. 30 août 2013 16:47:47 CEST
  * Created :      juillet 2013
  *
  * Original Copyright :
@@ -27,7 +27,7 @@ defined('SYSPATH') or die('No direct script access.');
 /**
  * Installer/uninstaller of the plugin
  */
-class Smsautomate_Install {
+class Smsreport_Install {
 
 	/**
 	 * Constructor to load the shared database library
@@ -38,8 +38,8 @@ class Smsautomate_Install {
 
 		$pre = Kohana::config('database.default.table_prefix');
 
-		$this->table = $pre.'smsautomate';
-		$this->table_white = $pre.'smsautomate_whitelist';
+		$this->table = $pre.'smsreport';
+		$this->table_white = $pre.'smsreport_whitelist';
 
 	}
 
@@ -66,9 +66,9 @@ class Smsautomate_Install {
 		) ENGINE=MyISAM DEFAULT CHARSET=utf8');
 
 		//Create default settings if not exists
-		if( ORM::factory('smsautomate')->count_all() == 0)
+		if( ORM::factory('smsreport')->count_all() == 0)
 		{
-			$s = ORM::factory('smsautomate');
+			$s = ORM::factory('smsreport');
 
 			$s::save_setting('delimiter', '#');
 			$s::save_setting('code_word', 'abc');

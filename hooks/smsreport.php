@@ -1,18 +1,36 @@
-<?php defined('SYSPATH') or die('No direct script access.');
-/**
- * smsautomate Hook - Load All Events
+<?php
+/**-----------------------------------------------------------------------------
  *
- * PHP version 5
- * LICENSE: This source file is subject to LGPL license 
- * that is available through the world-wide-web at the following URI:
- * http://www.gnu.org/copyleft/lesser.html
- * @author	   Ushahidi Team <team@ushahidi.com> 
- * @package	   Ushahidi - http://source.ushahididev.com
- * @copyright  Ushahidi - http://www.ushahidi.com
- * @license	   http://www.gnu.org/copyleft/lesser.html GNU Lesser General Public License (LGPL) 
- */
+ * SMS Report Hook
+ * 
+ * File :         hooks/smsreport.php
+ * Project :      SMS Report
+ * Last Modified :ven. 30 août 2013 16:46:52 CEST
+ * Created :      juillet 2013
+ *
+ * Original Copyright :
+ *  This project was originally forked from SMS Automate by John Etherton,
+      available at https://github.com/jetherton/smsautomate
+ *
+ * Author :       G.F.
+ * Organization : IRD - UMR GRED
+ * Copyright :    IRD - UMR GRED, 2013
+ * Licence :      LGPL
+ * 
+ *  You should have received a copy of the GNU Lesser General Public License
+ *   along with SMS Report. 
+ *   If not, see <http://www.gnu.org/licenses/>.
+ *
+ *----------------------------------------------------------------------------*/
+defined('SYSPATH') or die('No direct script access.');
 
-class smsautomate {
+/**
+ * SMS Report Hook
+ *
+ * Most important class in the plugin,
+ * it parses the SMS and convert it to a report
+ */
+class smsreport {
 
 	/**
 	 * Registers the main event add method
@@ -23,8 +41,8 @@ class smsautomate {
 		// Hook into routing
 		Event::add('system.pre_controller', array($this, 'add'));
 
-		$this->settings = ORM::factory('smsautomate')->get_array();
-		$this->white_table = 'smsautomate_whitelist';
+		$this->settings = ORM::factory('smsreport')->get_array();
+		$this->white_table = 'smsreport_whitelist';
 		$this->event = NULL;
 	}
 
@@ -570,4 +588,5 @@ class smsautomate {
 
 }
 
-new smsautomate;
+
+new smsreport;

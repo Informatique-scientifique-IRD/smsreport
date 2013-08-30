@@ -3,9 +3,9 @@
  *
  * Andministration controller
  * 
- * File :         controller/admin/smsreport.php
+ * File :         controllers/admin/smsreport_settings.php
  * Project :      SMS Report
- * Last Modified :ven. 30 août 2013 16:29:21 CEST
+ * Last Modified :ven. 30 août 2013 16:44:31 CEST
  * Created :      juillet 2013
  *
  * Original Copyright :
@@ -22,11 +22,12 @@
  *   If not, see <http://www.gnu.org/licenses/>.
  *
  *----------------------------------------------------------------------------*/
+defined('SYSPATH') or die('No direct script access.');
 
 /**
  * Admin pannel class
  */
-class Smsautomate_settings_Controller extends Admin_Controller
+class Smsreport_settings_Controller extends Admin_Controller
 {
 
 	/**
@@ -43,7 +44,7 @@ class Smsautomate_settings_Controller extends Admin_Controller
 		$this->template->content->title = "SMS Report Settings";
 		
 		// Settings Form View
-		$this->template->content->settings_form = new View('smsautomate/smsautomate_admin');
+		$this->template->content->settings_form = new View('smsreport/smsreport_admin');
 		
 		// Create the form array
 		$form = array(
@@ -154,7 +155,7 @@ class Smsautomate_settings_Controller extends Admin_Controller
 			if ($post->validate())
 			{
 
-				ORM::factory('smsautomate')->save_all($post);
+				ORM::factory('smsreport')->save_all($post);
 
 				$form_saved = TRUE;
 
@@ -164,7 +165,7 @@ class Smsautomate_settings_Controller extends Admin_Controller
 				//do the white list
 
 				//delete everything in the white list db to make room for the new ones
-				ORM::factory('smsautomate_whitelist')->delete_all();
+				ORM::factory('smsreport_whitelist')->delete_all();
 
 				$whitelist = nl2br(trim($post->whitelist));
 				if($whitelist != "" && $whitelist != null)
@@ -173,7 +174,7 @@ class Smsautomate_settings_Controller extends Admin_Controller
 					//now put back the new ones
 					foreach($whitelist_array as $item)
 					{
-						$whitelist_item = ORM::factory('smsautomate_whitelist');
+						$whitelist_item = ORM::factory('smsreport_whitelist');
 						$whitelist_item->phone_number = trim($item);
 						$whitelist_item->save();
 					}
@@ -200,12 +201,12 @@ class Smsautomate_settings_Controller extends Admin_Controller
 		{
 
 			// Get settings from the database
-			$form = ORM::factory('smsautomate')->get_array();
+			$form = ORM::factory('smsreport')->get_array();
 
 			// Get the white listed numbers
 			$whitelist = "";
 			$count = 0;
-			$listers = ORM::factory('smsautomate_whitelist')->find_all();
+			$listers = ORM::factory('smsreport_whitelist')->find_all();
 			foreach($listers as $item)
 			{
 				$count++;

@@ -1,11 +1,11 @@
 <?php
 /*------------------------------------------------------------------------------
  *
- * Settings table model
+ * Settings whitelist table model
  * 
  * File :         models/smsreport_whitelist.php
  * Project :      SMS Report
- * Last Modified :ven. 30 août 2013 11:02:50 CEST
+ * Last Modified :ven. 30 août 2013 16:50:17 CEST
  * Created :      juillet 2013
  *
  * Original Copyright :
@@ -27,9 +27,9 @@ defined('SYSPATH') or die('No direct script access.');
 /**
  * Model for plugin whitelist numbers
  */
-class Smsautomate_whitelist_Model extends ORM
+class Smsreport_whitelist_Model extends ORM
 {
 	
 	// Database table name
-	protected $table_name = 'smsautomate_whitelist';
+	protected $table_name = 'smsreport_whitelist';
 }

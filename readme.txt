@@ -1,19 +1,26 @@
 === About ===
-name: SMS Automate
-website: http://www.ushahidi.com
-description: Automates turning a SMS message into a report
-version: 1.1
-requires: 2.0b10
-tested up to: 2.0
-author: John Etherton
-author website: http:/johnetherton.com
+name: SMS Report
+website: https://github.com/gilfu/smsautomate/
+description: Parse SMS into reports
+version: 0.1
+requires: ?
+tested up to: 2.7
+author: Gil Fu - UMR GRED / IRD
+author website: http://www.gred.ird.fr/
 
 == Description ==
-Allows properly formatted SMS messages to be automatically converted into approved reports. Uses a code word to provide some level of security.
+Can convert any incomming SMS properly formated into a full report.
+This report can also contains answers to custom forms.
+Lot of options available to customize the plugin to you needs and to shrink as
+more as possible the length of the SMS message
 
 == Installation ==
-1. Copy the entire /smsautomate/ directory into your /plugins/ directory.
+1. Copy the entire /smsreport/ directory into your /plugins/ directory.
 2. Activate the plugin.
 
+== Original Copyright ==
+This project was originally forked from SMS Automate by John Etherton,
+available at https://github.com/jetherton/smsautomate
+
 == Changelog ==
-v1.1 - 2010-10-26: Changed to work with the new SMS architecture, and the switch from <plugin-name>_admin.php to <plugin-name>_settings.php for the name of the admin file
+v0.1 : First release

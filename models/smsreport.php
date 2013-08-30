@@ -5,7 +5,7 @@
  * 
  * File :         models/smsreport.php
  * Project :      SMS Report
- * Last Modified :ven. 30 août 2013 11:15:59 CEST
+ * Last Modified :ven. 30 août 2013 16:48:57 CEST
  * Created :      juillet 2013
  *
  * Original Copyright :
@@ -29,10 +29,10 @@ defined('SYSPATH') or die('No direct script access.');
  *
  * Adapted from Ushahidi Settings_Model class by Team Ushahidi under LGPL
  */
-class Smsautomate_Model extends ORM
+class Smsreport_Model extends ORM
 {
 	// Database table name
-	protected $table_name = 'smsautomate';
+	protected $table_name = 'smsreport';
         
 	// Prevents cached items from being reloaded
 	protected $reload_on_wakeup   = FALSE;
@@ -47,7 +47,7 @@ class Smsautomate_Model extends ORM
 	 */
 	public static function get_setting($key)
 	{
-		$setting = ORM::factory('smsautomate')->where('key', $key)->find();
+		$setting = ORM::factory('smsreport')->where('key', $key)->find();
 		return ($setting->loaded) ? $setting->value : NULL;
 
 	}
@@ -72,7 +72,7 @@ class Smsautomate_Model extends ORM
 	 */
 	public static function get_array()
 	{
-		$all_settings = ORM::factory('smsautomate')->find_all();
+		$all_settings = ORM::factory('smsreport')->find_all();
 		$settings = array();
 		foreach ($all_settings as $setting)
 		{
@@ -91,7 +91,7 @@ class Smsautomate_Model extends ORM
 	 */
 	public static function save_setting($key, $value)
 	{
-			$setting = ORM::factory('smsautomate')->where('key', $key)->find();
+			$setting = ORM::factory('smsreport')->where('key', $key)->find();
 			
 			$setting->key = $key;
 			$setting->value = $value;
@@ -112,7 +112,7 @@ class Smsautomate_Model extends ORM
 		$all_settings = self::get_array();
 
 		// Settings update query
-		$query = sprintf("UPDATE `%ssmsautomate` SET `value` = CASE `key` ", 
+		$query = sprintf("UPDATE `%ssmsreport` SET `value` = CASE `key` ", 
 		    Kohana::config('database.default.table_prefix'));
 
 		// Used for building the query clauses for the final query
