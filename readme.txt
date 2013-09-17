@@ -11,7 +11,7 @@ author website: http://www.gred.ird.fr/
 == Description ==
 Can convert any incomming SMS properly formated into a full report.
 This report can also contains answers to custom forms.
-Lot of options available to customize the plugin to you needs and to shrink as
+Lot of options available to customize the plugin to your needs and to shrink as
 more as possible the length of the SMS message
 
 == Installation ==

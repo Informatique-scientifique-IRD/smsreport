@@ -67,7 +67,7 @@
 				<?php print form::input('code_word', $form['code_word'], ' class="text"'); ?>
 			</div>
 			<div class="row">
-				<h4><a href="#" class="tooltip" title="Enter a list of phone numbers, each number on a different line, that are allowed to send in SMS reports. 
+				<h4><a href="#" class="tooltip" title="Enter a list of phone numbers, each number on a different line, that are allowed to send reports by SMS.
 					 Numbers must be in the exact same format as when they're received. If you want any number to be able to use this leave the list blank.">White listed phone numbers</a>
 					 <br /><span>One number per line</span></h4>
 				<?php print form::textarea('whitelist', $form['whitelist'], ' style="height:40px;"') ?>	
