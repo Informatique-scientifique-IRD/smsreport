@@ -5,7 +5,7 @@
  * 
  * File :         hooks/smsreport.php
  * Project :      SMS Report
- * Last Modified :ven. 30 août 2013 16:46:52 CEST
+ * Last Modified :jeu. 19 sept. 2013 09:40:01 CEST
  * Created :      juillet 2013
  *
  * Original Copyright :
@@ -353,6 +353,7 @@ class smsreport {
 				{
 					// Get possible answers
 					$defaults = explode(',' , $field['field_default']);
+
 					// Get given ids
 					$response_ids = explode(',' , $element );
 
@@ -361,6 +362,14 @@ class smsreport {
 					foreach ($response_ids as $r_id)
 					{
 						$r_id = trim($r_id); // Without spaces
+
+                                                // Empty
+                                                if( $r_id == '')
+                                                {
+                                                  $response_array[] = $r_id;
+                                                  continue;
+                                                }
+
 						// Not numeric
 						if ( ! is_numeric($r_id))
 						{
